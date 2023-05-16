@@ -10,3 +10,15 @@
 <!-- usage -->
 ```sh-session
 $ npm install -g @futura-dev/cosmodrome
+$ release COMMAND
+running command...
+$ release (--version)
+@futura-dev/cosmodrome/0.0.2 darwin-arm64 node-v18.16.0
+$ release --help [COMMAND]
+USAGE
+  $ release COMMAND
+...
+```
+<!-- usagestop -->
+```sh-session
+$ npm install -g @futura-dev/cosmodrome
