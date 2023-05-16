@@ -9,14 +9,4 @@
 # Usage
 <!-- usage -->
 ```sh-session
-$ npx @futura-dev/cosmodrome
-$ release --help
-USAGE
-  $ npx @futura-dev/cosmodrome [COMMAND]
-```
-<!-- usagestop -->
-# Commands
-<!-- commands -->
-* `cosmodrome release`
-* `cosmodrome init`
-<!-- commandsstop -->
+$ npm install -g @futura-dev/cosmodrome
