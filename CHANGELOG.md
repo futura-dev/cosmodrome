@@ -6,4 +6,3 @@
 * feat: create CHANGELOG.md from latest commit message body
 * feat: push changes
 * feat: push tags
-* feat: create release on GitHub
