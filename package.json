@@ -3,7 +3,7 @@
   "version": "1.1.1",
   "private": false,
   "bin": {
-    "@futura-dev/cosmodrome": "dist/src/cli.js"
+    "@futura-dev/cosmodrome": "src/cli.js"
   },
   "repository": {
     "type": "git",
