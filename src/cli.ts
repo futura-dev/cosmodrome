@@ -1,13 +1,15 @@
+#! /usr/bin/env node
+
 import { program } from 'commander'
-import pj from './../package.json'
 import {release} from './commands/release'
 import {init} from './commands/init'
+import * as process from 'process'
 
 // program definition
 program
   .name('@futura-dev/cosmodrome')
   .description('Cosmodrome 🚀')
-  .version(pj.version)
+  .version(process.env.npm_package_version ?? '0.0.0')
 
 // 'release' command definition
 program
