@@ -2,10 +2,6 @@
   "github": {
     "owner": "",
     "repo": "",
-    "token": "",
-    "release_branch": "",
-    "draft": false,
-    "prerelease": false,
-    "generate_release_notes": false
+    "token": ""
   }
 }
