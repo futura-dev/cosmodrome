@@ -1,4 +1,4 @@
-# Code of Conduct - Cosmodrome
+# Code of Conduct - Cosmodrome 🚀
 
 ## Our Pledge
 
