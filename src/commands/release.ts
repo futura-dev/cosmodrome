@@ -206,7 +206,7 @@ export const release = async (flags: Flags): Promise<void> => {
 
     // STEP 6
     // update git locally
-    controlledSpawn('git', ['commit', `-am ${message}`, '--no-verify'])
+    controlledSpawn('git', ['commit', `-am ${message}`, '--author', `${config.git.authorUsername} <${config.git.authorEmail}>`, '--no-verify'])
     s.complete(`created commit with message ${message}`)
     doesTag && controlledSpawn('git', ['tag', repo_config.tagName])
     s.complete(`created tag ${repo_config.tagName}`)
