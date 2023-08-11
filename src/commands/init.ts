@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import { Signale, SignaleOptions } from "signale";
+import { z } from "zod";
 
 const baseSignalOptions: SignaleOptions = {
   types: {
@@ -26,6 +27,10 @@ export const init = (): Promise<void> => {
     "./.cosmodrome.json",
     JSON.stringify(
       {
+        git: {
+          authorEmail: "",
+          authorUsername: ""
+        },
         github: {
           owner: "",
           repo: "",
