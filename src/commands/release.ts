@@ -179,19 +179,17 @@ export const release = async (flags: Flags): Promise<void> => {
     // choose repository provider type
     const git_provider: "GitHub" | "DevOps" = (await prompts.select({
       message: "Choose the repository provider",
-      choices: [
-        { value: "GitHub" },
-        { value: "DevOps" }
-        // { value: 'GitLab' },
-        // { value: 'BitBucket' }
-      ]
+      choices: [{ value: "GitHub" }, { value: "DevOps" }]
     })) as "GitHub" | "DevOps";
 
     const git_provider_config = {
       isPreRelease: false,
       isDraft: false,
       doesGenerateReleaseNotes: true,
-      releaseBranchName: controlledSpawn("git", ["branch", "--show-current"])
+      releaseBranchName: controlledSpawn("git", [
+        "branch",
+        "--show-current"
+      ]).trim()
     };
 
     if (git_provider === "GitHub") {
@@ -275,17 +273,13 @@ export const release = async (flags: Flags): Promise<void> => {
           }
         )
         .then(res => {
-          console.log("SUCCESS");
-          s.info(res);
           s_git.complete(`Release ${repo_config.releaseName} created`);
           s.newline();
-          s.success("well done");
+          s.success("well done 🚀 !!");
           resolve();
         })
         .catch(err => {
-          console.log("ERROR");
-          s.info(err);
-          s_git.fatal(err);
+          fs.writeFileSync("./cosmodrome.logs", err);
           reject();
         });
     }
