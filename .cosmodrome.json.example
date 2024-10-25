@@ -1,4 +1,6 @@
 {
+  "preReleasePrefix": "",
+  "releaseCommitPrefix": "",
   "git": {
     "authorEmail": "",
     "authorUsername": ""

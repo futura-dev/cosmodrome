@@ -43,7 +43,8 @@ const s_git = new Signale({
 export type Flags = {
   config: string;
 };
-export type SemanticVersionType = "major" | "minor" | "patch";
+export type SemanticVersionType = "major" | "minor" | "patch" | "pre-release";
+export type VersionActionType =  "pre-release" | "promote" | "major" | "minor" | "patch";
 
 /**
  * COMMAND release
@@ -65,20 +66,24 @@ export const release = async (flags: Flags): Promise<void> => {
       process.exit(0);
     }
 
-    // load and validate the root package.json
-    const p_json = root_package_json_schema.parse(
-      JSON.parse(fs.readFileSync("./package.json", { encoding: "utf-8" }))
-    );
-
     const _config = {
       run: ".",
       monorepo: false,
+      isCurrentAPreRelease: false,
       detected_version: "",
-      new_version: ""
+      new_version: "",
+      packageJson: {} as Record<string, unknown>,
+      mustBeAPreRelease: false,
     };
 
+
+    // load and validate the root package.json
+    _config.packageJson = root_package_json_schema.parse(
+      JSON.parse(fs.readFileSync("./package.json", { encoding: "utf-8" }))
+    );
+
     // is a monorepo ?
-    const workspaces = p_json.workspaces;
+    const workspaces = _config.packageJson.workspaces;
     if (isArray(workspaces)) {
       const workspace = await prompts.select({
         message: "choose the workspace",
@@ -91,6 +96,11 @@ export const release = async (flags: Flags): Promise<void> => {
       // update config
       _config.run = workspace;
       _config.monorepo = true;
+      _config.packageJson = workspace_package_json_schema.parse(
+        JSON.parse(
+          fs.readFileSync(`${workspace}/package.json`, { encoding: "utf-8" })
+        )
+      );
     }
 
     // STEP 0
@@ -117,42 +127,43 @@ export const release = async (flags: Flags): Promise<void> => {
       commitMessage: ""
     };
 
+    // check if pre-release
+    const currentVersion = _config.packageJson.version as string;
+    const isPreRelease = new RegExp(`\\d+\\.\\d+\\.\\d+-${config.preReleasePrefix}\\.\\d+`).test(currentVersion);
+    _config.isCurrentAPreRelease = isPreRelease;
+
     // STEP 2
     // choose the correct semantic version
-    const semantic: SemanticVersionType = (await prompts.select({
+    const choices: { value: string }[] = isPreRelease 
+      ? [{ value: 'pre-release' }, { value: 'promote' }] 
+      : [{ value: "major" }, { value: "minor" }, { value: "patch" }];
+    const action = (await prompts.select({
       message: "choose a version type",
-      choices: [{ value: "major" }, { value: "minor" }, { value: "patch" }]
-    })) as SemanticVersionType;
+      choices: choices,
+    })) as VersionActionType;
 
-    // MONOREPO
-    if (_config.monorepo) {
-      // read the target workspace package.json
-      const target_p_json = workspace_package_json_schema.parse(
-        JSON.parse(
-          fs.readFileSync(`${_config.run}/package.json`, { encoding: "utf-8" })
-        )
-      );
-      // set repo config vars
-      const workspace_new_version = _computeNewVersion(
-        target_p_json.version,
-        semantic
-      );
-      _config.detected_version = target_p_json.version;
-      _config.new_version = workspace_new_version;
-      repo_config.tagName = `${target_p_json.slug}@v${workspace_new_version}`;
-      repo_config.releaseName = `${target_p_json.name}@v${workspace_new_version}`;
-      repo_config.commitMessage = `release: ${target_p_json.name}@v${workspace_new_version}`;
+    if (!_config.isCurrentAPreRelease) {
+      _config.mustBeAPreRelease = await prompts.confirm({
+        message: "Is a pre-release ?",
+        default: false
+      });
     }
-    // NO MONOREPO
-    else {
-      // set repo config vars
-      const root_new_version = _computeNewVersion(p_json.version, semantic);
-      _config.detected_version = p_json.version;
-      _config.new_version = root_new_version;
-      repo_config.tagName = `v${root_new_version}`;
-      repo_config.releaseName = `v${root_new_version}`;
-      repo_config.commitMessage = `release: v${root_new_version}`;
-    }
+
+    const newComputedVersion = _computeNewVersion(
+      _config.detected_version,
+      action,
+    config.preReleasePrefix, 
+      action === 'pre-release' || _config.mustBeAPreRelease
+    );
+
+    _config.new_version = newComputedVersion;
+    const slug: string|null = _config.packageJson.slug as string || null;
+    const projectNameOrSlug = slug || _config.packageJson.name;
+
+    const commitPrefix: string = config.releaseCommitPrefix;
+    repo_config.tagName = _config.monorepo ? `${projectNameOrSlug}@v${_config.new_version}` : `v${_config.new_version}`;
+    repo_config.releaseName = repo_config.tagName;
+    repo_config.commitMessage = `${commitPrefix}: ${repo_config.releaseName}`;
 
     // STEP 3
     // Update the version in package.json and package-lock.json
@@ -183,7 +194,6 @@ export const release = async (flags: Flags): Promise<void> => {
     })) as "GitHub" | "DevOps";
 
     const git_provider_config = {
-      isPreRelease: false,
       isDraft: false,
       doesGenerateReleaseNotes: true,
       releaseBranchName: controlledSpawn("git", [
@@ -193,10 +203,6 @@ export const release = async (flags: Flags): Promise<void> => {
     };
 
     if (git_provider === "GitHub") {
-      git_provider_config.isPreRelease = await prompts.confirm({
-        message: "Is a pre-release ?",
-        default: git_provider_config.isPreRelease
-      });
       git_provider_config.isDraft = await prompts.confirm({
         message: "Sign release as draft ?",
         default: git_provider_config.isDraft
@@ -261,7 +267,7 @@ export const release = async (flags: Flags): Promise<void> => {
             name: repo_config.releaseName,
             // body: log,
             draft: git_provider_config.isDraft,
-            prerelease: git_provider_config.isPreRelease,
+            prerelease: _config.mustBeAPreRelease,
             generate_release_notes: git_provider_config.doesGenerateReleaseNotes
           },
           {
@@ -286,21 +292,67 @@ export const release = async (flags: Flags): Promise<void> => {
   });
 };
 
-const _computeNewVersion = (
+/**
+ * How to:
+ * 
+ * A. stable:       a.b.c
+ * major           (a+1).0.0
+ * minor            a.(b+1).0
+ * patch            a.b.(c+1)
+ * major-pr        (a+1).0.0-x.1
+ * minor-pr         a.(b+1).0-x.1
+ * patch-pr         a.b.(c+1)-x.1
+ * 
+ * B. pre-release:   a.b.c-x.d
+ * pre-release       a.b.c-x.(d+1)
+ * promote           a.b.c
+ * 
+ * example:
+ * 0.0.1        patch
+ * 0.0.2        patch
+ * 0.0.3        minor
+ * 0.1.0        patch
+ * 0.1.2        major-pr
+ * 1.0.0-x.1    pre-release
+ * 1.0.0-x.2    promote
+ * 1.0.0        minor-pr
+ * 1.1.0-x.1
+ */
+export const _computeNewVersion = (
   version: string,
-  result: SemanticVersionType
-): `${number}.${number}.${number}` => {
-  if (version.split(".").length !== 3)
+  action: VersionActionType,
+  preReleasePrefix: string,
+  mustProducePreRelease: boolean,
+): `${number}.${number}.${number}` | `${number}.${number}.${number}-${string}.${number}` => {
+  if (version.split(".").length < 3)
     throw new Error("version is bad formatted");
-  const semanticVersion = version.split(".").map(string => Number(string));
-  switch (result) {
+
+  const stableSemanticVersionPieces: number[] = version
+    .split('-')[0]
+    .split(".")
+    .slice(0, 3)
+    .map(i => Number(i));
+  
+  const preReleasePiece: string|null = version.split('-').pop() || null;
+  const [_, preReleaseNumber] = preReleasePiece?.split('.') || [null, null]
+
+  switch (action) {
     case "major":
-      return `${semanticVersion[0] + 1}.0.0`;
+      return mustProducePreRelease ? `${stableSemanticVersionPieces[0] + 1}.0.0-${preReleasePrefix}.1` :`${stableSemanticVersionPieces[0] + 1}.0.0`;
     case "minor":
-      return `${semanticVersion[0]}.${semanticVersion[1] + 1}.0`;
+      return mustProducePreRelease ? `${stableSemanticVersionPieces[0]}.${stableSemanticVersionPieces[1] + 1}.0-${preReleasePrefix}.1` : `${stableSemanticVersionPieces[0]}.${stableSemanticVersionPieces[1] + 1}.0`;
     case "patch":
-      return `${semanticVersion[0]}.${semanticVersion[1]}.${
-        semanticVersion[2] + 1
+      return mustProducePreRelease ? `${stableSemanticVersionPieces[0]}.${stableSemanticVersionPieces[1]}.${
+        stableSemanticVersionPieces[2] + 1
+      }-${preReleasePrefix}.1` :  `${stableSemanticVersionPieces[0]}.${stableSemanticVersionPieces[1]}.${
+        stableSemanticVersionPieces[2] + 1
       }`;
+
+    case 'pre-release':
+      return `${stableSemanticVersionPieces[0]}.${stableSemanticVersionPieces[1]}.${
+        stableSemanticVersionPieces[2]}-${preReleasePrefix}.${Number(preReleaseNumber) + 1}`;
+    case 'promote':
+      return `${stableSemanticVersionPieces[0]}.${stableSemanticVersionPieces[1]}.${
+        stableSemanticVersionPieces[2]}`;
   }
 };
