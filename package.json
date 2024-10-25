@@ -54,9 +54,6 @@
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   },
-  "engines": {
-    "node": ">=22.6.0"
-  },
   "bugs": "https://github.com/futura-dev/cosmodrome/issues",
   "keywords": [
     "commander",
