@@ -2,7 +2,7 @@ name: Publish Package to npmjs
 
 on:
   release:
-    types: [released]
+    types: [prereleased]
 
 jobs:
   test:
@@ -15,7 +15,7 @@ jobs:
       - run: npm i
       - run: npm test
   build:
-    needs:
+    needs: 
       - test
     runs-on: ubuntu-latest
     steps:
@@ -27,6 +27,6 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - run: npm i
       - run: npm run build
-      - run: npm publish --access public --tag latest
+      - run: npm publish --access public --tag alpha
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

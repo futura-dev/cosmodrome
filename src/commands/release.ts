@@ -131,6 +131,7 @@ export const release = async (flags: Flags): Promise<void> => {
     _config.detected_version = _config.packageJson.version as string;
     const isPreRelease = new RegExp(`\\d+\\.\\d+\\.\\d+-${config.preReleasePrefix}\\.\\d+`).test(_config.detected_version);
     _config.isCurrentAPreRelease = isPreRelease;
+    _config.mustBeAPreRelease = isPreRelease;
 
     // STEP 2
     // choose the correct semantic version
