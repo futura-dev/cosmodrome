@@ -143,6 +143,10 @@ export const release = async (flags: Flags): Promise<void> => {
       choices: choices,
     })) as VersionActionType;
 
+    if (action === 'promote') {
+      _config.mustBeAPreRelease = false;
+    }
+
     if (!_config.isCurrentAPreRelease) {
       _config.mustBeAPreRelease = await prompts.confirm({
         message: "Is a pre-release ?",
